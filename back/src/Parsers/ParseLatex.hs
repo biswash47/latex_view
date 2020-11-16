@@ -33,8 +33,9 @@ data EnvContent = E Env | C Content
 instance ToJSON EnvContent
 instance FromJSON EnvContent
 
+data Hole = Hole
 
-data Env  = Start | Env {
+data Env  = NoEnv | Env {
     name :: String, 
     content :: [EnvContent]
     } deriving (Show, Eq, Generic)
@@ -84,22 +85,26 @@ testParser = do
 
 envParser = do 
     envName <- envBegin
-    content <-  some validChar
-    envEnd envName
-    return (Env envName [C content])
+    content <-  manyTill anyChar (try $ envEnd envName)
+    return $ E (Env envName [C content])
 
+textContentParser = do
+    C <$> many anyChar
+
+envContentParser = try envParser <|> textContentParser
+
+-- env is name [EnvContent]
+-- envContent is either another Env or just Text
 
 
 envParser1 :: Env -> Parser Env
-envParser1 env = do
-    envName <- envBegin
-    content <- manyTill anyChar (try $ envEnd envName)
+envParser1 env = undefined
+
     
-    case env of
-        Start -> return $ Env envName [C content]
-        (Env n c) -> do 
-            return $ envParser1 $ Env n ( E newEnv : c)
-                where  newEnv = Env envName [C content]
+    
+            
+-- $ Env n ( E newEnv : c)
+-- where  newEnv = Env envName [C content]
             
                 
 
@@ -108,4 +113,4 @@ envParser1 env = do
 testFile =  "../latex_files/test.tex"
 parseTester p = runParser p testFile <$> readFile testFile
 
-parseFromFile = parseTester (envParser1 Start)
+parseFromFile = parseTester (envContentParser)
