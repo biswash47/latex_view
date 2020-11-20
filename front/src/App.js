@@ -10,6 +10,7 @@ function App() {
   useEffect(() => { 
     async function fetchData (){
         
+      
       var result =  await axios.get('http://localhost:4000/hello').then((response) => response);
       console.log(result);
       setResponse(result.data);
@@ -20,8 +21,8 @@ function App() {
   }, []);
   return (
     <div className="App">
-      <h1>{response.name}</h1>
-      <p>{response.content}</p>
+      <h1>Response</h1>
+      <p>{response.tag}</p>
     </div>
   );
 }

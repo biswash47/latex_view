@@ -25,30 +25,26 @@ Env
 
 type Parser = Parsec Void String
 
-type Content = String
-
-data EnvContent = E Env | C Content
-    deriving (Show, Eq, Generic)
-
-instance ToJSON EnvContent
-instance FromJSON EnvContent
 
 data Hole = Hole
 
-data Env  = NoEnv | Env {
-    name :: String, 
-    content :: [EnvContent]
-    } deriving (Show, Eq, Generic)
 
-instance ToJSON Env
-instance FromJSON Env
+data Latex  = NoEnv 
+          | Env {name :: String, content :: [Latex] } 
+          | PlainText String 
+          deriving (Show, Eq, Generic)
 
+instance ToJSON Latex
+instance FromJSON Latex
+
+specialChars :: [Char]
+specialChars = ['\\']
 
 validChar :: Parser Char
-validChar = alphaNumChar 
-    <|> spaceChar 
-    <|> newline
-    <|> satisfy ('.' ==)
+validChar = anyCharBut specialChars
+
+anyCharBut :: [Char]-> Parser Char 
+anyCharBut l = satisfy (`notElem` l)
 
 anyChar :: Parser Char
 anyChar = satisfy $ const True
@@ -58,59 +54,43 @@ anyString = many anyChar
 
 envBegin :: Parser String
 envBegin = do
-    string "\\begin{"
+    envBeginTag
     name <- some alphaNumChar
     char '}'
     return name
 
+envBeginTag :: Parser String
+envBeginTag = string "\\begin{"
+
+envEndTag :: Parser String
+envEndTag = string "\\end{"
+
 envEnd :: String -> Parser ()
 envEnd envName = do
-    string "\\end{"
+    envEndTag
     string envName
     char '}'
     return ()
 
 
---testParser :: Parser (String, String)
-testParser = do
-    string "\\begin{"
-    name <- some alphaNumChar
-    char '}'
-    content <- some validChar
-    string "\\end{"
-    --name2 <- some (alphaNumChar <|> spaceChar)
-    string name
-    char '}'
-    return (Env name [C content])
+plainTextParser :: Parser String
+plainTextParser = do
+    notFollowedBy envBeginTag
+    notFollowedBy envEndTag
+    content <- many validChar
+    rest <- plainTextParser <|> pure ""
+    return (content ++ rest)
+
 
 envParser = do 
-    envName <- envBegin
-    content <-  manyTill anyChar (try $ envEnd envName)
-    return $ E (Env envName [C content])
-
-textContentParser = do
-    C <$> many anyChar
-
-envContentParser = try envParser <|> textContentParser
-
--- env is name [EnvContent]
--- envContent is either another Env or just Text
-
-
-envParser1 :: Env -> Parser Env
-envParser1 env = undefined
-
-    
-    
-            
--- $ Env n ( E newEnv : c)
--- where  newEnv = Env envName [C content]
-            
-                
+    envName <- try envBegin
+    content <- many $ envParser <|>  PlainText <$> plainTextParser
+    envEnd envName
+    return $ Env envName content
 
 
 
 testFile =  "../latex_files/test.tex"
 parseTester p = runParser p testFile <$> readFile testFile
 
-parseFromFile = parseTester (envContentParser)
+parseFromFile = parseTester (envParser)
