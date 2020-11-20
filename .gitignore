@@ -1,0 +1,5 @@
+latex_files/*
+*.tex
+*.lock
+*-lock.json
+*.stack-work
