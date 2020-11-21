@@ -28,14 +28,39 @@ type Parser = Parsec Void String
 
 data Hole = Hole
 
+type Name = String 
 
 data Latex  = NoEnv 
-          | Env {name :: String, content :: [Latex] } 
+          | Env {name :: Name, content :: [Latex] } 
           | PlainText String 
-          deriving (Show, Eq, Generic)
+          deriving (Eq, Generic)
 
 instance ToJSON Latex
 instance FromJSON Latex
+
+
+instance Show Latex where 
+    show  = detok
+
+
+detok :: Latex -> String
+detok l = case l of 
+    NoEnv -> ""
+    PlainText t -> show t
+    Env n c -> envToStr n c
+
+
+envBeginStr :: Name -> String 
+envBeginStr n = "\\begin{" <> n <> "}\n"
+
+envEndStr :: Name -> String
+envEndStr n = "\\end{" <> n <> "}\n"
+
+
+envToStr :: Name -> [Latex] -> String
+envToStr n c = envBeginStr n <> content <> envEndStr n
+    where  content = concatMap detok c <> "\n"
+
 
 specialChars :: [Char]
 specialChars = ['\\']
@@ -81,7 +106,7 @@ plainTextParser = do
     rest <- plainTextParser <|> pure ""
     return (content ++ rest)
 
-
+envParser :: Parser Latex
 envParser = do 
     envName <- try envBegin
     content <- many $ envParser <|>  PlainText <$> plainTextParser
@@ -94,3 +119,9 @@ testFile =  "../latex_files/test.tex"
 parseTester p = runParser p testFile <$> readFile testFile
 
 parseFromFile = parseTester (envParser)
+
+showFile = do
+    fileContents <- parseFromFile
+    case fileContents of
+        Left _ -> fail "Error"
+        Right c -> print c

@@ -7,6 +7,7 @@ module Main where
 import Web.Scotty
 import Network.Wai.Middleware.Cors
 import Parsers.ParseLatex 
+import Compiler.Detokenizer
 import Control.Monad.IO.Class
 import Data.Monoid ((<>))
 import qualified Data.Text as T

@@ -3,3 +3,5 @@ latex_files/*
 *.lock
 *-lock.json
 *.stack-work
+*.internal
+*.internal/*
